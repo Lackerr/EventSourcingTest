@@ -1,18 +1,21 @@
-﻿using Newtonsoft.Json;
+﻿using EventSourcingTest.Repositories;
+using Newtonsoft.Json;
 
 namespace EventSourcingTest;
 
 public class EventPublisher
 {
-    private readonly EventStore _eventStore;
+    private readonly EventStoreRepository _repository;
 
-    public EventPublisher(EventStore eventStore)
+    public EventPublisher(EventStoreRepository repository)
     {
-        _eventStore = eventStore;
+        _repository = repository;
     }
-    
-    public void Publish<T>(T domainEvent)
+
+    public async Task PublishAsync<T>(T domainEvent, Guid aggregateId)
     {
-        _eventStore.Save(domainEvent);
+        var eventType = domainEvent.GetType().Name;
+        var eventData = JsonConvert.SerializeObject(domainEvent);
+        await _repository.SaveEventAsync(aggregateId, eventType, eventData);
     }
 }

@@ -1,31 +1,36 @@
 ﻿using EventSourcingTest.Events;
 using EventSourcingTest.Models;
+using EventSourcingTest.Repositories;
 using Newtonsoft.Json;
 
 namespace EventSourcingTest;
 
 public class DocumentRehydrator
 {
-    public Document Rehydrate(Guid documentId, List<StoredEvent> storedEvents)
+    public async Task<Document> RehydrateAsync(Guid aggregateId, EventStoreRepository repository)
     {
+        var events = await repository.GetEventsByAggregateIdAsync(aggregateId);
         var document = new Document();
 
-        foreach (var storedEvent in storedEvents)
+        foreach (var storedEvent in events)
         {
-            switch (storedEvent.Type)
+            var eventType = storedEvent["EventType"].AsString;
+            var eventData = storedEvent["EventData"].AsString;
+
+            switch (eventType)
             {
                 case nameof(DocumentCreated):
-                    var documentCreated = Newtonsoft.Json.JsonConvert.DeserializeObject<DocumentCreated>(storedEvent.Data);
+                    var documentCreated = JsonConvert.DeserializeObject<DocumentCreated>(eventData);
                     document.Apply(documentCreated);
                     break;
 
                 case nameof(VersionAdded):
-                    var versionAdded = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionAdded>(storedEvent.Data);
+                    var versionAdded = JsonConvert.DeserializeObject<VersionAdded>(eventData);
                     document.Apply(versionAdded);
                     break;
 
                 default:
-                    throw new Exception($"Unbekannter Event-Typ: {storedEvent.Type}");
+                    throw new Exception($"Unknown event type: {eventType}");
             }
         }
 
